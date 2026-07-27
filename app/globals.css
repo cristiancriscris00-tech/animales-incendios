@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-white text-neutral-900;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Que el mapa no tape la cabecera pegajosa ni los modales */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+}
+
+/* Marcadores como puntos de color (evita los PNG rotos de Leaflet en bundlers) */
+.marker-dot {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.marker-dot.perdido {
+  background: #c81e1e;
+}
+.marker-dot.encontrado {
+  background: #0e7a46;
+}
+.marker-dot.seleccion {
+  background: #1d4ed8;
+}
