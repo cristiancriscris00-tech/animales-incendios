@@ -38,6 +38,32 @@ body {
 .marker-dot.encontrado {
   background: #0e7a46;
 }
-.marker-dot.seleccion {
+.marker-dot.herido {
+  background: #c2410c;
+}
+.marker-dot.ayuda {
   background: #1d4ed8;
+}
+/* Un aro pulsante marca los casos de urgencia alta */
+.marker-dot.urgente {
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.5),
+    0 0 0 4px rgba(194, 65, 12, 0.35);
+  animation: pulso-urgente 1.6s ease-out infinite;
+}
+@keyframes pulso-urgente {
+  50% {
+    box-shadow:
+      0 1px 4px rgba(0, 0, 0, 0.5),
+      0 0 0 9px rgba(194, 65, 12, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marker-dot.urgente {
+    animation: none;
+  }
+}
+/* Marcador de "estoy eligiendo este punto" en el formulario */
+.marker-dot.seleccion {
+  background: #111827;
 }

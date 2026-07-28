@@ -2,7 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import type { Map as LeafletMap, LayerGroup } from "leaflet";
-import type { Report } from "@/lib/types";
+import {
+  COLOR_TIPO,
+  SUBTIPO_LABEL,
+  URGENCIA_LABEL,
+  type Report,
+} from "@/lib/types";
 import "leaflet/dist/leaflet.css";
 
 interface Props {
@@ -24,8 +29,14 @@ function popupHtml(r: Report): string {
     day: "numeric",
     month: "short",
   });
-  const color = r.tipo === "perdido" ? "#c81e1e" : "#0e7a46";
+  const color = COLOR_TIPO[r.tipo];
   const lugar = [r.municipio, r.provincia].filter(Boolean).join(", ");
+  const encabezado =
+    r.tipo === "ayuda"
+      ? `Ofrece ayuda · ${r.subtipo ? SUBTIPO_LABEL[r.subtipo] : ""}`
+      : r.tipo === "herido"
+        ? `Herido o atrapado · ${r.especie ?? ""}${r.urgencia ? ` · ${URGENCIA_LABEL[r.urgencia]}` : ""}`
+        : `${r.tipo} · ${r.especie ?? ""}`;
   return `
     <div style="width:200px">
       ${
@@ -34,7 +45,7 @@ function popupHtml(r: Report): string {
           : ""
       }
       <p style="margin:6px 0 2px;font-weight:700;color:${color};text-transform:uppercase;font-size:12px">
-        ${r.tipo} · ${r.especie}
+        ${escapeHtml(encabezado)}
       </p>
       <p style="margin:0 0 4px;font-size:13px">${escapeHtml(r.descripcion)}</p>
       ${lugar ? `<p style="margin:0 0 4px;font-size:12px;color:#555">${escapeHtml(lugar)} · ${fecha}</p>` : ""}
@@ -87,9 +98,10 @@ export default function ReportsMap({ reports }: Props) {
     if (!layer) return;
     layer.clearLayers();
     for (const r of list) {
+      const urgente = r.tipo === "herido" && r.urgencia === "alta";
       const icon = L.divIcon({
         className: "",
-        html: `<span class="marker-dot ${r.tipo}"></span>`,
+        html: `<span class="marker-dot ${r.tipo}${urgente ? " urgente" : ""}"></span>`,
         iconSize: [22, 22],
         iconAnchor: [11, 11],
       });
@@ -103,7 +115,7 @@ export default function ReportsMap({ reports }: Props) {
     <div
       ref={containerRef}
       className="h-[55vh] min-h-[320px] w-full"
-      aria-label="Mapa de animales perdidos y encontrados"
+      aria-label="Mapa de animales perdidos, encontrados y ofertas de ayuda"
     />
   );
 }

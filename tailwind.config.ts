@@ -7,6 +7,8 @@ const config: Config = {
       colors: {
         perdido: "#C81E1E",
         encontrado: "#0E7A46",
+        herido: "#C2410C",
+        ayuda: "#1D4ED8",
       },
     },
   },

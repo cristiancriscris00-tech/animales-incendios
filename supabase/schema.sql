@@ -10,8 +10,10 @@ create extension if not exists "pgcrypto";
 -- ------------------------------------------------------------
 create table public.reports (
   id          uuid primary key default gen_random_uuid(),
-  tipo        text not null check (tipo in ('perdido', 'encontrado')),
-  especie     text not null check (especie in ('perro', 'gato', 'otro')),
+  tipo        text not null check (tipo in ('perdido', 'encontrado', 'ayuda', 'herido')),
+  especie     text check (especie in ('perro', 'gato', 'otro')),  -- null en 'ayuda'
+  subtipo     text check (subtipo in ('acogida', 'transporte', 'veterinario', 'comida_agua')),
+  urgencia    text check (urgencia in ('alta', 'media', 'baja')),  -- solo en 'herido'
   descripcion text not null check (char_length(descripcion) <= 300),
   foto_url    text,
   lat         double precision not null,
@@ -73,11 +75,26 @@ create policy "leer reportes visibles"
 create policy "publicar reporte"
   on public.reports for insert
   with check (
-    tipo in ('perdido', 'encontrado')
-    and especie in ('perro', 'gato', 'otro')
-    and char_length(descripcion) <= 300
+    char_length(descripcion) <= 300
     and oculto = false
     and resuelto = false
+    and (
+      -- Ofertas de ayuda: llevan subtipo, no especie ni urgencia
+      (tipo = 'ayuda'
+        and subtipo in ('acogida', 'transporte', 'veterinario', 'comida_agua')
+        and especie is null
+        and urgencia is null)
+      -- Animal herido o atrapado: especie y urgencia obligatorias
+      or (tipo = 'herido'
+        and especie in ('perro', 'gato', 'otro')
+        and urgencia in ('alta', 'media', 'baja')
+        and subtipo is null)
+      -- Perdidos y encontrados: solo especie
+      or (tipo in ('perdido', 'encontrado')
+        and especie in ('perro', 'gato', 'otro')
+        and subtipo is null
+        and urgencia is null)
+    )
   );
 
 -- Cualquiera puede actualizar, pero solo la columna resuelto

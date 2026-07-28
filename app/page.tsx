@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
-import type { Especie, Report, Tipo } from "@/lib/types";
+import {
+  SUBTIPOS,
+  SUBTIPO_LABEL,
+  type Especie,
+  type Report,
+  type Subtipo,
+  type Tipo,
+} from "@/lib/types";
 import ReportForm from "@/components/ReportForm";
 import ReportCard from "@/components/ReportCard";
 
@@ -16,6 +23,7 @@ const ReportsMap = dynamic(() => import("@/components/ReportsMap"), {
 
 type FiltroTipo = "todos" | Tipo;
 type FiltroEspecie = "todas" | Especie;
+type FiltroSubtipo = "todos" | Subtipo;
 
 const FLAGS_KEY = "flags-enviados";
 
@@ -27,7 +35,9 @@ export default function Home() {
 
   const [fTipo, setFTipo] = useState<FiltroTipo>("todos");
   const [fEspecie, setFEspecie] = useState<FiltroEspecie>("todas");
+  const [fSubtipo, setFSubtipo] = useState<FiltroSubtipo>("todos");
   const [fProvincia, setFProvincia] = useState("todas");
+  const [soloUrgentes, setSoloUrgentes] = useState(false);
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase
@@ -46,6 +56,21 @@ export default function Home() {
     return () => clearInterval(id);
   }, [cargar]);
 
+  // Los filtros de especie y de tipo de ayuda se excluyen entre sí
+  function cambiarTipo(nuevo: FiltroTipo) {
+    setFTipo(nuevo);
+    setSoloUrgentes(false);
+    if (nuevo === "ayuda") setFEspecie("todas");
+    else setFSubtipo("todos");
+  }
+
+  function alternarUrgentes() {
+    setSoloUrgentes((antes) => {
+      if (!antes) setFTipo("todos");
+      return !antes;
+    });
+  }
+
   const provincias = useMemo(
     () =>
       Array.from(new Set(reports.map((r) => r.provincia).filter(Boolean))).sort(
@@ -60,12 +85,43 @@ export default function Home() {
         (r) =>
           (fTipo === "todos" || r.tipo === fTipo) &&
           (fEspecie === "todas" || r.especie === fEspecie) &&
-          (fProvincia === "todas" || r.provincia === fProvincia)
+          (fSubtipo === "todos" || r.subtipo === fSubtipo) &&
+          (fProvincia === "todas" || r.provincia === fProvincia) &&
+          (!soloUrgentes ||
+            (r.tipo === "herido" && r.urgencia === "alta" && !r.resuelto))
       ),
-    [reports, fTipo, fEspecie, fProvincia]
+    [reports, fTipo, fEspecie, fSubtipo, fProvincia, soloUrgentes]
+  );
+
+  const urgentes = useMemo(
+    () =>
+      reports.filter(
+        (r) => r.tipo === "herido" && r.urgencia === "alta" && !r.resuelto
+      ).length,
+    [reports]
   );
 
   const activos = useMemo(() => filtrados.filter((r) => !r.resuelto), [filtrados]);
+
+  // La urgencia solo ordena cuando se están viendo animales heridos. El
+  // listado general es cronológico a propósito: si los urgentes encabezaran
+  // toda la web, un aviso de perdido quedaría sepultado y "alta" acabaría
+  // marcándose siempre. Los urgentes ganan visibilidad con el contador de
+  // arriba, no robando el sitio a los demás.
+  const ordenados = useMemo(() => {
+    const viendoHeridos = fTipo === "herido" || soloUrgentes;
+    if (!viendoHeridos) return filtrados; // ya viene por fecha desde Supabase
+
+    const peso = (r: Report) => {
+      if (r.resuelto) return 3;
+      if (r.urgencia === "alta") return 0;
+      if (r.urgencia === "media") return 1;
+      return 2;
+    };
+    return [...filtrados].sort(
+      (a, b) => peso(a) - peso(b) || b.created_at.localeCompare(a.created_at)
+    );
+  }, [filtrados, fTipo, soloUrgentes]);
 
   async function marcarResuelto(id: string) {
     await supabase.from("reports").update({ resuelto: true }).eq("id", id);
@@ -89,6 +145,11 @@ export default function Home() {
 
   const selectClass =
     "rounded-lg border-2 border-neutral-300 bg-white px-2 py-2 text-sm font-semibold";
+
+  function abrirForm(tipo: Tipo) {
+    setFormTipo(tipo);
+    setAvisoPublicado(false);
+  }
 
   return (
     <main className="mx-auto max-w-3xl pb-16">
@@ -120,22 +181,31 @@ export default function Home() {
       {/* Botones principales */}
       <div className="grid grid-cols-2 gap-3 px-4 pb-4">
         <button
-          onClick={() => {
-            setFormTipo("perdido");
-            setAvisoPublicado(false);
-          }}
+          onClick={() => abrirForm("perdido")}
           className="rounded-xl bg-perdido px-3 py-4 text-lg font-bold text-white active:opacity-90"
         >
           He perdido<br />un animal
         </button>
         <button
-          onClick={() => {
-            setFormTipo("encontrado");
-            setAvisoPublicado(false);
-          }}
+          onClick={() => abrirForm("encontrado")}
           className="rounded-xl bg-encontrado px-3 py-4 text-lg font-bold text-white active:opacity-90"
         >
           He encontrado<br />un animal
+        </button>
+        <button
+          onClick={() => abrirForm("herido")}
+          className="col-span-2 rounded-xl bg-herido px-3 py-3 text-lg font-bold text-white active:opacity-90"
+        >
+          🚨 Animal herido o atrapado
+        </button>
+        <button
+          onClick={() => abrirForm("ayuda")}
+          className="col-span-2 rounded-xl bg-ayuda px-3 py-3 text-lg font-bold text-white active:opacity-90"
+        >
+          Quiero ayudar
+          <span className="block text-sm font-normal opacity-90">
+            Acogida, transporte, veterinario, comida y agua
+          </span>
         </button>
       </div>
 
@@ -169,29 +239,73 @@ export default function Home() {
         </div>
       )}
 
+      {/* Contador de urgencias: da visibilidad a los casos graves sin
+          reordenar el listado general */}
+      {urgentes > 0 && (
+        <div className="px-4 pb-3">
+          <button
+            onClick={alternarUrgentes}
+            aria-pressed={soloUrgentes}
+            className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 border-herido px-3 py-2 text-left ${
+              soloUrgentes ? "bg-herido text-white" : "bg-orange-50 text-herido"
+            }`}
+          >
+            <span className="font-bold">
+              🚨 {urgentes}{" "}
+              {urgentes === 1
+                ? "animal en urgencia alta"
+                : "animales en urgencia alta"}
+            </span>
+            <span className="shrink-0 text-sm font-semibold underline">
+              {soloUrgentes ? "Ver todo" : "Ver solo estos"}
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Filtros */}
       <div className="sticky top-0 z-20 flex flex-wrap gap-2 border-y border-neutral-200 bg-white px-4 py-2">
         <select
           value={fTipo}
-          onChange={(e) => setFTipo(e.target.value as FiltroTipo)}
+          onChange={(e) => cambiarTipo(e.target.value as FiltroTipo)}
           className={selectClass}
           aria-label="Filtrar por tipo"
         >
-          <option value="todos">Perdidos y encontrados</option>
+          <option value="todos">Todos los avisos</option>
           <option value="perdido">Solo perdidos</option>
           <option value="encontrado">Solo encontrados</option>
+          <option value="herido">Solo heridos o atrapados</option>
+          <option value="ayuda">Solo quien ofrece ayuda</option>
         </select>
-        <select
-          value={fEspecie}
-          onChange={(e) => setFEspecie(e.target.value as FiltroEspecie)}
-          className={selectClass}
-          aria-label="Filtrar por especie"
-        >
-          <option value="todas">Todas las especies</option>
-          <option value="perro">Perros</option>
-          <option value="gato">Gatos</option>
-          <option value="otro">Otros</option>
-        </select>
+
+        {fTipo === "ayuda" ? (
+          <select
+            value={fSubtipo}
+            onChange={(e) => setFSubtipo(e.target.value as FiltroSubtipo)}
+            className={selectClass}
+            aria-label="Filtrar por tipo de ayuda"
+          >
+            <option value="todos">Toda la ayuda</option>
+            {SUBTIPOS.map((s) => (
+              <option key={s} value={s}>
+                {SUBTIPO_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <select
+            value={fEspecie}
+            onChange={(e) => setFEspecie(e.target.value as FiltroEspecie)}
+            className={selectClass}
+            aria-label="Filtrar por especie"
+          >
+            <option value="todas">Todas las especies</option>
+            <option value="perro">Perros</option>
+            <option value="gato">Gatos</option>
+            <option value="otro">Otros</option>
+          </select>
+        )}
+
         <select
           value={fProvincia}
           onChange={(e) => setFProvincia(e.target.value)}
@@ -209,7 +323,7 @@ export default function Home() {
 
       {/* Mapa: solo avisos activos */}
       <ReportsMap reports={activos} />
-      <p className="flex gap-4 px-4 py-2 text-sm text-neutral-600">
+      <p className="flex flex-wrap gap-4 px-4 py-2 text-sm text-neutral-600">
         <span>
           <span className="mr-1 inline-block h-3 w-3 rounded-full bg-perdido" />
           Perdido
@@ -217,6 +331,14 @@ export default function Home() {
         <span>
           <span className="mr-1 inline-block h-3 w-3 rounded-full bg-encontrado" />
           Encontrado
+        </span>
+        <span>
+          <span className="mr-1 inline-block h-3 w-3 rounded-full bg-herido" />
+          Herido o atrapado
+        </span>
+        <span>
+          <span className="mr-1 inline-block h-3 w-3 rounded-full bg-ayuda" />
+          Ofrece ayuda
         </span>
       </p>
 
@@ -235,7 +357,7 @@ export default function Home() {
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {filtrados.map((r) => (
+            {ordenados.map((r) => (
               <ReportCard
                 key={r.id}
                 report={r}
