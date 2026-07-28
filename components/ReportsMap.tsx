@@ -195,10 +195,11 @@ export default function ReportsMap({ reports, seleccionado }: Props) {
         maxZoom: 11,
         animate: false,
       });
-      // fitBounds puede quedarse corto sobre un único aviso; maxBounds evita
-      // salir de España pero no reencuadra, así que lo forzamos aquí.
+      // Dos avisos lejanos hacen que fitBounds se abra más que la vista de
+      // España y aparezca medio Atlántico. El encuadre por defecto es el
+      // suelo: nunca se ve menos detalle que el país entero.
       const c = map.getCenter();
-      if (!dentroDeEspana(c.lat, c.lng)) {
+      if (map.getZoom() < SPAIN_ZOOM || !dentroDeEspana(c.lat, c.lng)) {
         map.setView(SPAIN_CENTER, SPAIN_ZOOM, { animate: false });
       }
     }
