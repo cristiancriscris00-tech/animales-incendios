@@ -67,3 +67,29 @@ body {
 .marker-dot.seleccion {
   background: #111827;
 }
+
+/* Aro dorado del aviso elegido en el listado. Se suma al color del tipo, que
+   sigue siendo el que informa: el oro solo dice "es este". */
+.marker-dot.seleccionado {
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.5),
+    0 0 0 4px #cb982f,
+    0 0 0 7px rgba(203, 152, 47, 0.35);
+  transform: scale(1.15);
+}
+
+/* Agrupación de marcadores cercanos: al ampliar, se separan */
+.cluster-dot {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: #0b0a09;
+  color: #f2eee6;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+}

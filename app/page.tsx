@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
 import {
@@ -13,6 +13,8 @@ import {
 } from "@/lib/types";
 import ReportForm from "@/components/ReportForm";
 import ReportCard from "@/components/ReportCard";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 const ReportsMap = dynamic(() => import("@/components/ReportsMap"), {
   ssr: false,
@@ -38,6 +40,8 @@ export default function Home() {
   const [fSubtipo, setFSubtipo] = useState<FiltroSubtipo>("todos");
   const [fProvincia, setFProvincia] = useState("todas");
   const [soloUrgentes, setSoloUrgentes] = useState(false);
+  const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  const mapaRef = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase
@@ -143,6 +147,27 @@ export default function Home() {
     cargar();
   }
 
+  // Al pulsar una ficha, el mapa vuela hasta ella. En móvil el mapa queda
+  // fuera de pantalla, así que además hay que subir hasta él o el vuelo pasa
+  // desapercibido.
+  function seleccionar(id: string) {
+    setSeleccionado(id);
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+
+    const nodo = mapaRef.current;
+    if (!nodo) return;
+    nodo.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Hay navegadores que ignoran el desplazamiento suave y se quedan
+    // quietos. Si el mapa sigue fuera de pantalla, lo llevamos de golpe:
+    // más vale un salto brusco que un vuelo que nadie ve.
+    window.setTimeout(() => {
+      const r = nodo.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight) {
+        nodo.scrollIntoView({ block: "center" });
+      }
+    }, 600);
+  }
+
   const selectClass =
     "rounded-lg border-2 border-neutral-300 bg-white px-2 py-2 text-sm font-semibold";
 
@@ -152,7 +177,9 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl pb-16">
+    <>
+      <SiteHeader />
+      <main className="mx-auto max-w-3xl">
       {/* Aviso oficial */}
       <div className="bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900">
         Esta web <strong>NO</strong> es un servicio oficial de emergencias. Para
@@ -168,15 +195,15 @@ export default function Home() {
         </a>
       </div>
 
-      {/* Cabecera */}
-      <header className="px-4 pb-3 pt-5">
+      {/* Titular */}
+      <div className="px-4 pb-3 pt-4">
         <h1 className="text-2xl font-extrabold leading-tight">
-          🐾 Animales perdidos y encontrados
+          Animales perdidos, encontrados y heridos
         </h1>
         <p className="text-neutral-600">
-          Incendios forestales en España · sin registro, gratis
+          Emergencias e incendios en España · sin registro, gratis
         </p>
-      </header>
+      </div>
 
       {/* Botones principales */}
       <div className="grid grid-cols-2 gap-3 px-4 pb-4">
@@ -264,7 +291,7 @@ export default function Home() {
       )}
 
       {/* Filtros */}
-      <div className="sticky top-0 z-20 flex flex-wrap gap-2 border-y border-neutral-200 bg-white px-4 py-2">
+      <div className="sticky top-[60px] z-20 flex flex-wrap gap-2 border-y border-neutral-200 bg-white px-4 py-2 md:top-[78px]">
         <select
           value={fTipo}
           onChange={(e) => cambiarTipo(e.target.value as FiltroTipo)}
@@ -322,7 +349,9 @@ export default function Home() {
       </div>
 
       {/* Mapa: solo avisos activos */}
-      <ReportsMap reports={activos} />
+      <div ref={mapaRef} className="scroll-mt-[70px]">
+        <ReportsMap reports={activos} seleccionado={seleccionado} />
+      </div>
       <p className="flex flex-wrap gap-4 px-4 py-2 text-sm text-neutral-600">
         <span>
           <span className="mr-1 inline-block h-3 w-3 rounded-full bg-perdido" />
@@ -363,16 +392,20 @@ export default function Home() {
                 report={r}
                 onResolve={marcarResuelto}
                 onFlag={reportarContenido}
+                onSelect={r.resuelto ? undefined : seleccionar}
+                seleccionado={seleccionado === r.id}
               />
             ))}
           </div>
         )}
       </section>
 
-      <footer className="px-4 pt-10 text-center text-xs text-neutral-400">
-        Hecho por voluntarios. Los datos los publica cada persona bajo su
-        responsabilidad.
-      </footer>
-    </main>
+        <p className="px-4 pt-8 text-center text-xs text-neutral-400">
+          Hecho por voluntarios. Los datos los publica cada persona bajo su
+          responsabilidad.
+        </p>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

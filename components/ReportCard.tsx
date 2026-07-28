@@ -14,6 +14,9 @@ interface Props {
   report: Report;
   onResolve: (id: string) => Promise<void>;
   onFlag: (id: string) => Promise<void>;
+  /** Lleva el mapa hasta este aviso. */
+  onSelect?: (id: string) => void;
+  seleccionado?: boolean;
 }
 
 const ESTILO: Record<Tipo, { borde: string; fondo: string; etiqueta: string }> = {
@@ -45,7 +48,13 @@ const URGENCIA_CHIP: Record<Urgencia, string> = {
   baja: "bg-neutral-200 text-neutral-700",
 };
 
-export default function ReportCard({ report: r, onResolve, onFlag }: Props) {
+export default function ReportCard({
+  report: r,
+  onResolve,
+  onFlag,
+  onSelect,
+  seleccionado = false,
+}: Props) {
   const [confirmResolve, setConfirmResolve] = useState(false);
   const [flagged, setFlagged] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -92,9 +101,12 @@ export default function ReportCard({ report: r, onResolve, onFlag }: Props) {
 
   return (
     <article
+      onClick={() => onSelect?.(r.id)}
       className={`overflow-hidden rounded-xl border-2 bg-white ${estilo.borde} ${
         r.resuelto ? "opacity-60" : ""
-      }`}
+      } ${
+        seleccionado ? "ring-2 ring-solaris-gold ring-offset-1" : ""
+      } ${onSelect ? "cursor-pointer" : ""}`}
     >
       {r.foto_url && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -156,6 +168,7 @@ export default function ReportCard({ report: r, onResolve, onFlag }: Props) {
         {!r.resuelto && (
           <a
             href={`tel:${r.telefono}`}
+            onClick={(e) => e.stopPropagation()}
             className={`rounded-lg py-3 text-center text-base font-bold text-white ${estilo.fondo}`}
           >
             📞 Llamar · {r.telefono}
@@ -165,7 +178,10 @@ export default function ReportCard({ report: r, onResolve, onFlag }: Props) {
         <div className="flex justify-between gap-2 pt-1">
           {!r.resuelto ? (
             <button
-              onClick={handleResolve}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleResolve();
+              }}
               disabled={busy}
               className="rounded-lg border-2 border-neutral-300 px-3 py-2 text-sm font-semibold text-neutral-700 disabled:opacity-50"
             >
@@ -175,7 +191,10 @@ export default function ReportCard({ report: r, onResolve, onFlag }: Props) {
             <span />
           )}
           <button
-            onClick={handleFlag}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleFlag();
+            }}
             disabled={flagged}
             className="px-2 py-2 text-sm text-neutral-500 disabled:opacity-50"
           >
