@@ -9,6 +9,7 @@ import {
   type Tipo,
   type Urgencia,
 } from "@/lib/types";
+import CompartirAviso from "./CompartirAviso";
 
 interface Props {
   report: Report;
@@ -99,6 +100,7 @@ export default function ReportCard({
     await onFlag(r.id);
   }
 
+
   return (
     <article
       onClick={() => onSelect?.(r.id)}
@@ -174,6 +176,13 @@ export default function ReportCard({
             📞 Llamar · {r.telefono}
           </a>
         )}
+
+        <CompartirAviso
+          id={r.id}
+          titulo={`${estilo.etiqueta}${r.especie ? ` · ${r.especie}` : ""} — Solaris Rescate`}
+          descripcion={r.descripcion}
+          compacto
+        />
 
         <div className="flex justify-between gap-2 pt-1">
           {!r.resuelto ? (

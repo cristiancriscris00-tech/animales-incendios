@@ -15,6 +15,8 @@ import ReportForm from "@/components/ReportForm";
 import ReportCard from "@/components/ReportCard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import TipoBotones from "@/components/TipoBotones";
+import EstadoVacio from "@/components/EstadoVacio";
 
 const ReportsMap = dynamic(() => import("@/components/ReportsMap"), {
   ssr: false,
@@ -106,6 +108,23 @@ export default function Home() {
   );
 
   const activos = useMemo(() => filtrados.filter((r) => !r.resuelto), [filtrados]);
+
+  // "No hay nada publicado" y "tus filtros no encuentran nada" son problemas
+  // distintos y necesitan salidas distintas.
+  const hayFiltros =
+    fTipo !== "todos" ||
+    fEspecie !== "todas" ||
+    fSubtipo !== "todos" ||
+    fProvincia !== "todas" ||
+    soloUrgentes;
+
+  function limpiarFiltros() {
+    setFTipo("todos");
+    setFEspecie("todas");
+    setFSubtipo("todos");
+    setFProvincia("todas");
+    setSoloUrgentes(false);
+  }
 
   // La urgencia solo ordena cuando se están viendo animales heridos. El
   // listado general es cronológico a propósito: si los urgentes encabezaran
@@ -206,34 +225,8 @@ export default function Home() {
       </div>
 
       {/* Botones principales */}
-      <div className="grid grid-cols-2 gap-3 px-4 pb-4">
-        <button
-          onClick={() => abrirForm("perdido")}
-          className="rounded-xl bg-perdido px-3 py-4 text-lg font-bold text-white active:opacity-90"
-        >
-          He perdido<br />un animal
-        </button>
-        <button
-          onClick={() => abrirForm("encontrado")}
-          className="rounded-xl bg-encontrado px-3 py-4 text-lg font-bold text-white active:opacity-90"
-        >
-          He encontrado<br />un animal
-        </button>
-        <button
-          onClick={() => abrirForm("herido")}
-          className="col-span-2 rounded-xl bg-herido px-3 py-3 text-lg font-bold text-white active:opacity-90"
-        >
-          🚨 Animal herido o atrapado
-        </button>
-        <button
-          onClick={() => abrirForm("ayuda")}
-          className="col-span-2 rounded-xl bg-ayuda px-3 py-3 text-lg font-bold text-white active:opacity-90"
-        >
-          Quiero ayudar
-          <span className="block text-sm font-normal opacity-90">
-            Acogida, transporte, veterinario, comida y agua
-          </span>
-        </button>
+      <div className="px-4 pb-4">
+        <TipoBotones onElegir={abrirForm} />
       </div>
 
       {avisoPublicado && (
@@ -349,8 +342,19 @@ export default function Home() {
       </div>
 
       {/* Mapa: solo avisos activos */}
-      <div ref={mapaRef} className="scroll-mt-[70px]">
+      <div ref={mapaRef} className="relative scroll-mt-[70px]">
         <ReportsMap reports={activos} seleccionado={seleccionado} />
+        {!cargando && activos.length === 0 && (
+          // El mapa sin marcadores no distingue "no hay nada" de "está roto".
+          // z-20 lo deja por encima de los paneles de Leaflet, que van a z-10.
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-4">
+            <p className="rounded-lg border-2 border-solaris-gold/40 bg-white/95 px-3 py-2 text-center text-sm font-semibold text-neutral-700 shadow-sm">
+              {hayFiltros
+                ? "Ningún aviso coincide con estos filtros."
+                : "Todavía no hay avisos activos en el mapa."}
+            </p>
+          </div>
+        )}
       </div>
       <p className="flex flex-wrap gap-4 px-4 py-2 text-sm text-neutral-600">
         <span>
@@ -380,10 +384,13 @@ export default function Home() {
         {cargando ? (
           <p className="py-8 text-center text-neutral-500">Cargando avisos…</p>
         ) : filtrados.length === 0 ? (
-          <p className="py-8 text-center text-neutral-500">
-            Todavía no hay avisos con estos filtros. Sé la primera persona en
-            publicar uno.
-          </p>
+          <div className="py-6">
+            <EstadoVacio
+              onElegir={abrirForm}
+              porFiltros={hayFiltros}
+              onLimpiarFiltros={limpiarFiltros}
+            />
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {ordenados.map((r) => (

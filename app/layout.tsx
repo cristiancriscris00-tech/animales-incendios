@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 const SITE_URL = "https://solarisrescate.online";
-const TITLE = "Solaris Rescate — animales perdidos y heridos en emergencias";
+const TITLE =
+  "Solaris Rescate — animales perdidos, encontrados y heridos en emergencias";
 const DESCRIPTION =
-  "Publica o encuentra avisos de animales perdidos, encontrados o heridos durante incendios. Gratis y sin registro.";
+  "Mapa colaborativo para publicar y encontrar animales perdidos, encontrados o heridos en incendios y emergencias en España. Gratis, sin registro.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
