@@ -59,6 +59,11 @@ export default function ReportsMap({ reports }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<LayerGroup | null>(null);
+  // Leaflet se carga de forma asíncrona: si los avisos llegan antes de que
+  // termine, el efecto de abajo sale sin pintar. Guardamos la lista vigente
+  // aquí para que el mapa se dibuje con ella en cuanto esté listo.
+  const reportsRef = useRef(reports);
+  reportsRef.current = reports;
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +77,7 @@ export default function ReportsMap({ reports }: Props) {
       }).addTo(map);
       layerRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
-      renderMarkers(L, reports);
+      renderMarkers(L, reportsRef.current);
     })();
 
     return () => {
